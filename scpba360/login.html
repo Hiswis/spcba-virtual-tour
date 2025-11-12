@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>School Virtual Tour - Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', sans-serif;
+      background: url("images/school-bg.jpg") no-repeat center center/cover;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .login-card {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      width: 320px;
+      text-align: center;
+    }
+
+    .login-card h2 {
+      margin-bottom: 0.5rem;
+      color: #202124;
+    }
+
+    .login-card p {
+      font-size: 0.9rem;
+      color: #5f6368;
+      margin-bottom: 1.5rem;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #4285F4;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: #3367D6;
+    }
+
+    button:nth-of-type(2) {
+      background: #34A853;
+    }
+
+    button:nth-of-type(2):hover {
+      background: #0F9D58;
+    }
+
+    button:nth-of-type(3) {
+      background: #F9AB00;
+    }
+
+    button:nth-of-type(3):hover {
+      background: #E37400;
+    }
+
+    #status {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: #d93025;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h2>Welcome</h2>
+    <p>Sign in to continue</p>
+
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+
+    <button onclick="login()">Login</button>
+    <button onclick="register()">Register</button>
+    <button onclick="guestLogin()">Continue as Guest</button>
+
+    <p id="status"></p>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+    import { 
+      getAuth, 
+      createUserWithEmailAndPassword, 
+      sendEmailVerification,
+      signInWithEmailAndPassword,
+      signOut 
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { 
+      getFirestore, 
+      doc, 
+      setDoc, 
+      getDoc 
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBpk6Co0zDIEsZwKYru4BYjukbxgR6yFDw",
+      authDomain: "school-tour-3cf8f.firebaseapp.com",
+      projectId: "school-tour-3cf8f",
+      storageBucket: "school-tour-3cf8f.appspot.com",
+      messagingSenderId: "675420455699",
+      appId: "1:675420455699:web:5b180391d6702ce985d0e6",
+      measurementId: "G-L3TNZY8D4E"
+    };
+
+    // ✅ Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // ✅ Register new user + save to Firestore
+    window.register = async function () {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const status = document.getElementById("status");
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await sendEmailVerification(userCredential.user);
+
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          email: email,
+          role: "user",
+          verified: false,
+          createdAt: new Date()
+        });
+
+        status.innerText = "✅ Registered! Check your email for verification before logging in.";
+        status.style.color = "green";
+      } catch (error) {
+        status.innerText = "❌ Error: " + error.message;
+      }
+    };
+
+    // ✅ Login user
+    window.login = async function () {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const status = document.getElementById("status");
+
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        if (!user.emailVerified) {
+          status.innerText = "⚠️ Please verify your email before logging in.";
+          await signOut(auth);
+          return;
+        }
+
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          if (data.role === "admin") {
+            window.location.href = "admin.html";
+          } else {
+            window.location.href = "tour.html";
+          }
+        } else {
+          status.innerText = "⚠️ No user data found.";
+        }
+
+      } catch (error) {
+        status.innerText = "❌ Error: " + error.message;
+      }
+    };
+
+    // ✅ Guest Login
+    window.guestLogin = function () {
+      localStorage.setItem("guest", "true");
+      window.location.href = "tour.html";
+    };
+  </script>
+</body>
+</html>
